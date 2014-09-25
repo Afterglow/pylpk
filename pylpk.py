@@ -29,7 +29,7 @@ def load_config(filename):
     out = {}
     out['port'] = int(config.get(_CONFIG_SECTION, 'port', False, {_CONFIG_SECTION: {'port': 389}}))
 
-    for i in ['host', 'base', 'ssh_public_key', 'auth_passwd', 'auth_user']:
+    for i in ['host', 'base', 'ssh_public_key', 'auth_passwd', 'auth_user', 'filter_template']:
         if config.has_option(_CONFIG_SECTION, i):
             out[i] = config.get(_CONFIG_SECTION, i, True)
     
@@ -40,10 +40,11 @@ def load_config(filename):
     
     return out
 
-_FILTER_TEMPLATE = 'cn=%s' 
 def get_public_key(cfg, user_name):
     try: 
         ldap_conn = ldap.open(cfg['host'])
+        if 'starttls' in cfg and cfg['starttls'] is True:
+          ldap_conn.set_option( ldap.OPT_X_TLS_DEMAND, True )
     except ldap.LDAPError, error_message:
         sys.stderr.write("LDAP Connect Fail: %s\n" % error_message)
         return
@@ -51,7 +52,7 @@ def get_public_key(cfg, user_name):
     if 'auth_user' in cfg:
         ldap_conn.simple_bind_s(cfg['auth_user'], cfg['auth_passwd'])
     
-    search_filter = _FILTER_TEMPLATE % user_name
+    search_filter = cfg['filter_template'] % user_name
     query_set = ldap_conn.search_s(
         cfg['base'], 
         ldap.SCOPE_SUBTREE,
